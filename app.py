@@ -1,16 +1,14 @@
-import os
 import pickle
 import pandas as pd
 import streamlit as st
 import seaborn as sns
 import matplotlib.pyplot as plt
-from sklearn.ensemble import RandomForestClassifier
 from streamlit_option_menu import option_menu
 from fpdf import FPDF
-import shutil
-import time
-from transformers import pipeline
 from streamlit_chat import message 
+import requests
+from geopy.geocoders import Nominatim
+
 
 # Set page configuration
 st.set_page_config(
@@ -205,21 +203,44 @@ def save_pdf(report, stage):
     pdf.output(pdf_output_path)
     return pdf_output_path
 
+# Dark mode toggle
+if "dark_mode" not in st.session_state:
+    st.session_state.dark_mode = True
 
-# Sidebar for navigation
+# Toggle Button
+st.sidebar.checkbox(
+    "Dark Mode", 
+    value=st.session_state.dark_mode, 
+    on_change=lambda: st.session_state.update(dark_mode=not st.session_state.dark_mode)
+)
+
+# Styles based on mode
+if st.session_state.dark_mode:
+    bg_color = "#121212"  # Dark background
+    text_color = "#FFFFFF"  # Light text
+    hover_color = "#333333"
+    selected_color = "#006400"  # Dark green for selected
+else:
+    bg_color = "#f0f2f6"  # Light background
+    text_color = "#000000"  # Dark text
+    hover_color = "#eee"
+    selected_color = "#4CAF50"  # Light green for selected
+
+# Sidebar Navigation
 with st.sidebar:
     selected = option_menu(
         menu_title="Liver Cirrhosis Detection System",
-        options=["Home", "Data Upload", "Cirrhosis Stage Prediction", "Model Insights", "Report Generation", "Chatbot"],
-        icons=['house', 'cloud-upload', 'activity', 'bar-chart-line', 'file-earmark-text', 'chat-dots'],
+        options=["Home", "Data Upload", "Cirrhosis Stage Prediction", "Model Insights", "Report Generation", "Chatbot", "Hospital Finder"],
+        icons=['house', 'cloud-upload', 'activity', 'bar-chart-line', 'file-earmark-text', 'chat-dots', 'hospital'],
         menu_icon="hospital-fill",
         default_index=0,
         styles={
-            "container": {"padding": "5px", "background-color": "#f0f2f6"},
-            "nav-link": {"margin": "0px", "--hover-color": "#eee"},
-            "nav-link-selected": {"background-color": "#4CAF50"}
+            "container": {"padding": "5px", "background-color": bg_color},
+            "nav-link": {"margin": "0px", "--hover-color": hover_color, "color": text_color},
+            "nav-link-selected": {"background-color": selected_color, "color": text_color},
         }
     )
+
 
 # Home Section
 if selected == "Home":
@@ -429,19 +450,35 @@ if selected == "Chatbot":
         
         # Basic responses based on questions related to liver cirrhosis
         if "symptoms" in user_input:
-            return "Common symptoms of liver cirrhosis include fatigue, abdominal pain, swelling, and jaundice."
+            return "Common symptoms of liver cirrhosis include fatigue, abdominal pain, swelling, jaundice, and weight loss."
         elif "treatment" in user_input or "cure" in user_input:
-            return "Liver cirrhosis treatment options include medications, lifestyle changes, and in severe cases, a liver transplant."
+            return "Liver cirrhosis treatment options include medications, lifestyle changes, managing complications, and in severe cases, a liver transplant."
         elif "causes" in user_input:
-            return "Common causes of liver cirrhosis include chronic alcohol abuse, viral hepatitis, and non-alcoholic fatty liver disease."
+            return "Common causes of liver cirrhosis include chronic alcohol abuse, viral hepatitis (hepatitis B and C), and non-alcoholic fatty liver disease (NAFLD)."
         elif "prevent" in user_input or "prevention" in user_input:
-            return "Preventing liver cirrhosis includes avoiding excessive alcohol use, managing chronic liver conditions, and maintaining a healthy diet."
+            return "Preventing liver cirrhosis involves avoiding excessive alcohol use, managing chronic liver conditions, avoiding hepatitis infections, and maintaining a healthy diet and weight."
         elif "jaundice" in user_input:
-            return "Jaundice is a common symptom of liver cirrhosis, caused by the liver's inability to process bilirubin properly."
+            return "Jaundice is a condition where the skin and eyes turn yellow due to the liver's inability to process bilirubin, and it is often associated with liver cirrhosis."
         elif "lifestyle" in user_input:
-            return "Lifestyle changes for liver cirrhosis include maintaining a healthy weight, avoiding alcohol, and eating a balanced diet."
+            return "Lifestyle changes for liver cirrhosis include avoiding alcohol, eating a healthy and low-sodium diet, staying active, and managing underlying liver conditions."
         elif "transplant" in user_input:
-            return "A liver transplant may be necessary for patients with advanced cirrhosis where other treatments are not effective."
+            return "A liver transplant may be necessary for patients with advanced cirrhosis who do not respond to other treatments."
+        elif "early signs" in user_input:
+            return "Early signs of liver cirrhosis include fatigue, loss of appetite, nausea, and easy bruising."
+        elif "alcohol" in user_input:
+            return "Alcohol consumption can damage liver cells and is one of the leading causes of liver cirrhosis. Reducing or avoiding alcohol is crucial for liver health."
+        elif "liver cirrhosis" in user_input:
+            return "Liver cirrhosis is a condition characterized by scarring of liver tissue, often due to long-term damage from conditions like hepatitis or alcohol abuse."
+        elif "difference between hepatitis and cirrhosis" in user_input:
+            return "Hepatitis is inflammation of the liver, often caused by viral infections, while cirrhosis is the scarring of the liver tissue due to long-term damage."
+        elif "non-alcoholic fatty liver disease" in user_input or "nafld" in user_input:
+            return "Non-alcoholic fatty liver disease (NAFLD) is a condition where fat builds up in the liver, often linked to obesity, diabetes, or high cholesterol."
+        elif "impact liver function" in user_input:
+            return "Cirrhosis impairs liver function by causing scarring, which hinders blood flow and the liver's ability to process toxins and produce essential proteins."
+        elif "complications" in user_input:
+            return "Complications of liver cirrhosis include ascites, variceal bleeding, hepatic encephalopathy, and an increased risk of liver cancer."
+        elif "diagnosis" in user_input:
+            return "Doctors diagnose liver cirrhosis through physical exams, blood tests, imaging studies like ultrasounds or MRIs, and sometimes a liver biopsy."
         else:
             return "I'm here to help with liver health queries. Can you please ask something specific?"
 
@@ -463,3 +500,59 @@ if selected == "Chatbot":
         # Use unique keys to prevent DuplicateWidgetID error
         message(msg['user'], is_user=True, key=f"user_{i}")  # Display user message
         message(msg['bot'], key=f"bot_{i}")  # Display bot response
+
+
+# Function to get hospitals using Overpass API from OpenStreetMap
+def find_hospitals_osm(location, radius=5000):
+    geolocator = Nominatim(user_agent="liver_health_assistant")
+    location = geolocator.geocode(location)
+
+    if location:
+        latitude = location.latitude
+        longitude = location.longitude
+        st.write(f"Searching for hospitals near {location.address}...")
+
+        # Query Overpass API for hospitals within a radius of the given location
+        overpass_url = "http://overpass-api.de/api/interpreter"
+        overpass_query = f"""
+        [out:json];
+        (
+          node["amenity"="hospital"](around:{radius},{latitude},{longitude});
+          way["amenity"="hospital"](around:{radius},{latitude},{longitude});
+          relation["amenity"="hospital"](around:{radius},{latitude},{longitude});
+        );
+        out body;
+        """
+        
+        response = requests.get(overpass_url, params={'data': overpass_query})
+        
+        if response.status_code == 200:
+            data = response.json()
+            hospitals = data['elements']
+            
+            if len(hospitals) > 0:
+                st.write(f"Found {len(hospitals)} hospitals nearby:")
+                for hospital in hospitals:
+                    name = hospital.get('tags', {}).get('name', 'No Name Available')
+                    address = hospital.get('tags', {}).get('addr:full', 'No Address Available')
+                    st.write(f"- {name} - {address}")
+            else:
+                st.write("No hospitals found in the nearby area.")
+        else:
+            st.error("Error querying Overpass API.")
+    else:
+        st.error("Location not found. Please try a valid location.")
+
+# Hospital Finder Section
+if selected == "Hospital Finder":
+    st.title("Find Hospitals for Liver Cirrhosis Treatment")
+    st.write("""
+    In this section, you can search for hospitals nearby that treat liver cirrhosis or liver-related issues.
+    Simply enter a city or address to get a list of hospitals.
+    """)
+
+    # Input for the user's location (city or address)
+    location = st.text_input("Enter your city or address", "")
+
+    if st.button("Search Hospitals"):
+        find_hospitals_osm(location)
