@@ -570,5 +570,5 @@ if selected == "Hospital Finder":
     # Input for the user's location (city or address)
     location = st.text_input("Enter your city or address", "")
 
-    if st.button("Search Hospitals"):
+    if st.button("Search for nearby Hospitals"):
         find_hospitals_osm(location)
