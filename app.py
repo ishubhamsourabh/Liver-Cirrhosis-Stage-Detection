@@ -360,15 +360,31 @@ elif selected == "Model Insights":
     # Assuming you've trained your model and can evaluate it, here we are just showing an example
     # If you have the actual test data, you can compute the metrics from there
     st.write("For demonstration purposes, the model's performance metrics are shown below:")
-    accuracy = 0.93  # Example accuracy value (replace with actual evaluation metric)
-    precision = 0.90  # Example precision value (replace with actual evaluation metric)
-    recall = 0.91  # Example recall value (replace with actual evaluation metric)
-    f1_score = 0.905  # Example F1 score (replace with actual evaluation metric)
+    accuracy = 0.9322  # Example accuracy value (replace with actual evaluation metric)
 
     st.write(f"Accuracy: {accuracy * 100:.2f}%")
-    st.write(f"Precision: {precision * 100:.2f}%")
-    st.write(f"Recall: {recall * 100:.2f}%")
-    st.write(f"F1-Score: {f1_score * 100:.2f}%")
+
+    # Displaying Model Performance (Class-wise Precision, Recall, F1-Score)
+    st.subheader("Stage-wise Model Performance")
+
+    # Performance metrics for each stage
+    performance_data = {
+        "Stage": [1, 2, 3],
+        "Precision (%)": [94.00, 91.00, 94.00],
+        "Recall (%)": [91.00, 93.00, 95.00],
+        "F1-Score (%)": [92.00, 92.00, 95.00],
+    }
+
+    # Creating a DataFrame
+    performance_df = pd.DataFrame(performance_data)
+
+    # Set 'Stage' as the index to avoid showing an extra index column
+    performance_df.set_index("Stage", inplace=True)
+
+    # Display the table in Streamlit without an index column
+    st.table(performance_df)
+
+
 
     st.subheader("Feature Importance")
     
