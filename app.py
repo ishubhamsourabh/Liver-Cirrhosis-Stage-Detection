@@ -357,8 +357,6 @@ elif selected == "Model Insights":
     # Displaying Model Performance (Accuracy, Precision, Recall, etc.)
     st.subheader("Model Performance")
     
-    # Assuming you've trained your model and can evaluate it, here we are just showing an example
-    # If you have the actual test data, you can compute the metrics from there
     st.write("For demonstration purposes, the model's performance metrics are shown below:")
     accuracy = 0.9322  # Example accuracy value (replace with actual evaluation metric)
 
